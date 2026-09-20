@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session # pyright: ignore[reportMissingImports]
 
 from app.core.database import get_db
 from app.models.dataset import Dataset
+from app.services.query_engine import QueryEngine
 
 from app.services.profiler import profile_dataset
 
@@ -131,3 +132,46 @@ async def get_dataset(
         )
 
     return dataset
+
+@router.get("/{dataset_id}/preview")
+async def preview_dataset(
+    dataset_id: str,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+):
+    dataset = (
+        db.query(Dataset)
+        .filter(Dataset.id == dataset_id)
+        .first()
+    )
+
+    if not dataset:
+        raise HTTPException(
+            status_code=404,
+            detail="Dataset not found",
+        )
+
+    try:
+        return QueryEngine.get_preview(
+            file_path=dataset.file_path,
+            file_format=dataset.format,
+            limit=limit,
+        )
+
+    except FileNotFoundError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=str(exc),
+        ) from exc
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        ) from exc
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Could not preview dataset: {exc}",
+        ) from exc
