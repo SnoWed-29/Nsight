@@ -1,5 +1,10 @@
 from fastapi import FastAPI  # pyright: ignore[reportMissingImports]
+
 from app.api.datasets import router as datasets_router
+from app.core.database import Base, engine
+from app.models.dataset import Dataset
+
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title="Nsight API",

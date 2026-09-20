@@ -1,10 +1,19 @@
 from pathlib import Path
 from uuid import uuid4
 
+from app.models import dataset
 import polars as pl  # pyright: ignore[reportMissingImports]
-from fastapi import APIRouter, File, HTTPException, UploadFile  # pyright: ignore[reportMissingImports]
+from fastapi import APIRouter, File, HTTPException, UploadFile, Depends  # pyright: ignore[reportMissingImports]
+
+from sqlalchemy.orm import Session # pyright: ignore[reportMissingImports]
+
+from app.core.database import get_db
+from app.models.dataset import Dataset
 
 from app.services.profiler import profile_dataset
+
+
+
 
 router = APIRouter(prefix="/api/datasets", tags=["Datasets"])
 
@@ -28,7 +37,10 @@ def load_dataset(file_path: Path, extension: str) -> pl.DataFrame:
 
 
 @router.post("/upload")
-async def upload_dataset(file: UploadFile = File(...)):
+async def upload_dataset(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    ):
     if not file.filename:
         raise HTTPException(
             status_code=400,
@@ -66,9 +78,56 @@ async def upload_dataset(file: UploadFile = File(...)):
 
     profile = profile_dataset(df)
 
+    dataset = Dataset(
+        id=dataset_id,
+        filename=file.filename,
+        format=extension.removeprefix("."),
+        file_path=str(file_path),
+        rows=df.height,
+        columns=df.width,
+    )
+
+    db.add(dataset)
+    db.commit()
+    db.refresh(dataset)
+
     return {
         "id": dataset_id,
         "filename": file.filename,
         "format": extension.removeprefix("."),
+        "rows": dataset.rows,
+        "columns": dataset.columns,
         "profile": profile
     }
+
+
+@router.get("")
+async def list_datasets(
+        db: Session = Depends(get_db)
+):
+    datasets = (
+        db.query(Dataset)
+        .order_by(Dataset.created_at.desc())
+        .all()
+    )
+
+    return datasets
+
+@router.get("/{dataset_id}")
+async def get_dataset(
+    dataset_id: str,
+    db: Session = Depends(get_db),
+):
+    dataset = (
+        db.query(Dataset)
+        .filter(Dataset.id == dataset_id)
+        .first()
+    )
+
+    if not dataset:
+        raise HTTPException(
+            status_code=404,
+            detail="Dataset not found",
+        )
+
+    return dataset
