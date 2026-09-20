@@ -30,6 +30,7 @@ htmlcov/
 *.duckdb
 *.sqlite
 *.sqlite3
+backend/data/uploads/
 
 # Logs
 *.log

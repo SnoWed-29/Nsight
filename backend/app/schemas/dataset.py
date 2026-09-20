@@ -15,3 +15,7 @@ class DatasetResponse(BaseModel):
     model_config = {
         "from_attributes": True,
     }
+
+class DatasetQueryRequest(BaseModel):
+    sql: str
+    
