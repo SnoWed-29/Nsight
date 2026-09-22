@@ -144,3 +144,67 @@ class QueryEngine:
 
         finally:
             connection.close()
+    @staticmethod
+    def get_schema(
+        file_path: str,
+        file_format: str,
+    ) -> list[dict[str, str]]:
+        path = Path(file_path)
+
+        if not path.exists():
+            raise FileNotFoundError(
+                f"Dataset file not found: {file_path}"
+            )
+
+        connection = duckdb.connect()
+
+        try:
+            if file_format == "csv":
+                escaped_path = str(path).replace("'", "''")
+
+                connection.execute(
+                    f"""
+                    CREATE VIEW dataset AS
+                    SELECT *
+                    FROM read_csv_auto('{escaped_path}')
+                    """
+                )
+
+            elif file_format == "json":
+                escaped_path = str(path).replace("'", "''")
+
+                connection.execute(
+                    f"""
+                    CREATE VIEW dataset AS
+                    SELECT *
+                    FROM read_json_auto('{escaped_path}')
+                    """
+                )
+
+            elif file_format == "xlsx":
+                dataframe = pl.read_excel(path)
+
+                connection.register(
+                    "dataset",
+                    dataframe.to_arrow(),
+                )
+
+            else:
+                raise ValueError(
+                    f"Unsupported dataset format: {file_format}"
+                )
+
+            rows = connection.execute(
+                "DESCRIBE dataset"
+            ).fetchall()
+
+            return [
+                {
+                    "name": row[0],
+                    "type": row[1],
+                }
+                for row in rows
+            ]
+
+        finally:
+            connection.close()
