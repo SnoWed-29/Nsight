@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     environment: str = "development"
 
     llm_api_key: str = ""
-    llm_base_url: str = "https://api.openai.com/v1"
+    llm_base_url: str = "https://openrouter.ai/api/v1"
     llm_model: str = "gpt-5-mini"
 
     class Config:

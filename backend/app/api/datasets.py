@@ -219,3 +219,41 @@ async def query_dataset(
             status_code=400,
             detail=f"Query failed: {exc}",
         ) from exc
+
+@router.get("/{dataset_id}/schema")
+async def get_dataset_schema(
+    dataset_id: str,
+    db: Session = Depends(get_db),
+):
+    dataset = (
+        db.query(Dataset)
+        .filter(Dataset.id == dataset_id)
+        .first()
+    )
+
+    if not dataset:
+        raise HTTPException(
+            status_code=404,
+            detail="Dataset not found",
+        )
+
+    try:
+        return {
+            "dataset_id": dataset.id,
+            "schema": QueryEngine.get_schema(
+                file_path=dataset.file_path,
+                file_format=dataset.format,
+            ),
+        }
+
+    except FileNotFoundError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=str(exc),
+        ) from exc
+
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        ) from exc
