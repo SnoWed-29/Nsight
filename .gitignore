@@ -43,3 +43,8 @@ pnpm-debug.log*
 .DS_Store
 Thumbs.db
 .idea/
+
+.env
+data/
+__pycache__/
+.pytest_cache/
