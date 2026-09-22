@@ -6,7 +6,7 @@ from app.models.dataset import Dataset
 from app.schemas.chat import ChatRequest
 from app.services.ai import AIService
 from app.services.query_engine import QueryEngine
-from app.services.sql_validator import validate_sql
+from app.services.sql_validator import validate_sql, validate_dataset_reference
 
 router = APIRouter(
     prefix="/api/datasets",
@@ -52,11 +52,19 @@ async def chat_with_dataset(
         )
 
         validate_sql(sql)
+        validate_dataset_reference(sql)
 
         result = QueryEngine.execute_query(
             file_path=dataset.file_path,
             file_format=dataset.format,
             sql=sql,
+        )
+
+        answer = ai_service.explain_result(
+            question=request.question,
+            sql=sql,
+            columns=result["columns"],
+            rows=result["rows"],
         )
 
         return {
@@ -65,6 +73,7 @@ async def chat_with_dataset(
             "columns": result["columns"],
             "rows": result["rows"],
             "count": result["count"],
+            "answer": answer,
         }
 
     except ValueError as exc:

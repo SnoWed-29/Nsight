@@ -97,3 +97,71 @@ Rules:
             sql = sql[:-3]
 
         return sql.strip()
+    def explain_result(
+    self,
+    question: str,
+    sql: str,
+    columns: list[str],
+    rows: list[list],
+) -> str:
+
+        result_text = "\n".join(
+        str(row)
+        for row in rows
+        )
+
+        prompt = f"""
+            You are the data analyst for Nshight.
+
+            Answer the user's question using ONLY the query result below.
+
+            User question:
+            {question}
+
+            SQL used:
+            {sql}
+
+            Query result:
+            {result_text}
+
+            Rules:
+
+            - Answer the user's question directly.
+            - Use the actual values from the query result.
+            - Treat the query result values as factual data.
+            - Never use column names as if they were values.
+            - Never invent values.
+            - Never invent entities that are not present in the result.
+            - If the result contains one row, explain that row directly.
+            - If the result is empty, say that no matching data was found.
+            - Keep the answer concise and natural.
+            - Do not mention SQL, DuckDB, prompts, or internal implementation
+            unless the user specifically asks about them.
+            """
+
+        response = self.client.chat.completions.create(
+            model=settings.llm_model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "You are a precise data analyst. "
+                        "Only use information present in the query result."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": prompt,
+                },
+            ],
+            temperature=0,
+        )
+
+        content = response.choices[0].message.content
+
+        if not content:
+            raise ValueError(
+                "The AI did not generate an explanation."
+            )
+
+        return content.strip()

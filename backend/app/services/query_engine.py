@@ -4,6 +4,7 @@ from pathlib import Path
 import duckdb # pyright: ignore[reportMissingImports]
 import polars as pl # pyright: ignore[reportMissingImports]
 
+MAX_RESULT_ROWS = 1000
 
 class QueryEngine:
     @staticmethod
@@ -134,12 +135,22 @@ class QueryEngine:
                     f"Unsupported dataset format: {file_format}"
                 )
 
-            result = connection.execute(sql).pl()
+            cursor = connection.execute(sql)
+
+            columns = [
+                column[0]
+                for column in cursor.description
+            ]
+
+            rows = cursor.fetchmany(MAX_RESULT_ROWS)
 
             return {
-                "columns": result.columns,
-                "rows": result.to_dicts(),
-                "count": result.height,
+                "columns": columns,
+                "rows": [
+                    dict(zip(columns, row))
+                    for row in rows
+                ],
+                "count": len(rows),
             }
 
         finally:
