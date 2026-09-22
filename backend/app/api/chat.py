@@ -59,12 +59,20 @@ async def chat_with_dataset(
             sql=sql,
         )
 
+        answer = ai_service.explain_result(
+            question=request.question,
+            sql=sql,
+            columns=result["columns"],
+            rows=result["rows"],
+        )
+
         return {
             "question": request.question,
             "sql": sql,
             "columns": result["columns"],
             "rows": result["rows"],
             "count": result["count"],
+            "answer": answer,
         }
 
     except ValueError as exc:
