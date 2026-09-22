@@ -83,13 +83,18 @@ class InsightEngine:
             trend_insights = InsightEngine.trend_insights(
                 connection
             )
-            insights = (
+            raw_insights = (
                 numeric_insights
                 + quality_insights
                 + categorical_insights
                 + outlier_insights
                 + trend_insights
             )
+
+            insights = [
+                InsightEngine.normalize_insight(insight)
+                for insight in raw_insights
+            ]
 
             return {
                 "dataset": {
@@ -484,3 +489,64 @@ class InsightEngine:
             })
 
         return insights
+    @staticmethod
+    def normalize_insight(
+        insight: dict[str, Any],
+    ) -> dict[str, Any]:
+
+        insight_type = insight["type"]
+
+        titles = {
+            "numeric_summary": "Numeric summary",
+            "missing_values": "Missing values detected",
+            "duplicate_rows": "Duplicate rows detected",
+            "categorical_distribution": "Categorical distribution",
+            "outliers": "Potential outliers detected",
+            "time_series": "Time series trend",
+        }
+
+        descriptions = {
+            "numeric_summary": (
+                "Summary statistics for a numeric column."
+            ),
+            "missing_values": (
+                "This column contains missing values."
+            ),
+            "duplicate_rows": (
+                "The dataset contains duplicate rows."
+            ),
+            "categorical_distribution": (
+                "Distribution of the most common values."
+            ),
+            "outliers": (
+                "Some values are statistically unusual based on the IQR method."
+            ),
+            "time_series": (
+                "Monthly changes and aggregated values over time."
+            ),
+        }
+
+        severity = "info"
+
+        if insight_type == "missing_values":
+            severity = "warning"
+
+        elif insight_type == "duplicate_rows":
+            severity = "warning"
+
+        elif insight_type == "outliers":
+            severity = "notice"
+
+        return {
+            "type": insight_type,
+            "severity": severity,
+            "title": titles.get(
+                insight_type,
+                "Dataset insight",
+            ),
+            "description": descriptions.get(
+                insight_type,
+                "An insight was detected in the dataset.",
+            ),
+            "data": insight,
+        }
